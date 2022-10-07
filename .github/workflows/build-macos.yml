@@ -78,9 +78,9 @@ jobs:
         # builds on macOS
         include:
           - { 
-            name: "x86_64 (cp36-cp310)",
+            name: "x86_64 (cp36-cp310-cp11)",
             macarch: x86_64,
-            pyversions: cp36-* cp310-*
+            pyversions: cp36-* cp310-* cp311-*
           }
 
           - { 
@@ -102,9 +102,9 @@ jobs:
           }
 
           - { 
-            name: "arm64 (cp38-cp39-cp310)",
+            name: "arm64 (cp38-cp39-cp310-cp311)",
             macarch: arm64,
-            pyversions: cp38-* cp39-* cp310-*
+            pyversions: cp38-* cp39-* cp310-* cp311-*
           }
 
     env:
@@ -151,7 +151,7 @@ jobs:
           key: macdep-${{ hashFiles('buildconfig/manylinux-build/**') }}-${{ hashFiles('buildconfig/macdependencies/*.sh') }}-${{ matrix.macarch }}
 
       - name: Build and test wheels
-        uses: pypa/cibuildwheel@v2.5.0
+        uses: pypa/cibuildwheel@v2.10.2
 
       - uses: actions/upload-artifact@v3
         with:

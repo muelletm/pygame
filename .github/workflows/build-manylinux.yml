@@ -32,6 +32,7 @@ on:
 
 jobs:
   build:
+    name: ${{ matrix.image }} [${{ matrix.arch }}]
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false  # if a particular matrix build fails, don't skip the rest
@@ -91,7 +92,7 @@ jobs:
     - uses: actions/checkout@v3.0.2
 
     - name: Build and test wheels
-      uses: pypa/cibuildwheel@v2.5.0
+      uses: pypa/cibuildwheel@v2.10.2
 
     # We upload the generated files under github actions assets
     - name: Upload dist
