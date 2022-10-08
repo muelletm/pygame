@@ -1,17 +1,12 @@
 #!/bin/bash
 set -e -x
 
+# This file is not used by CI anymore. This only exists incase someone wants to
+# generate manylinux wheels locally for testing
 
-if [[ "$1" == "buildpypy" ]]; then
-    export SUPPORTED_PYTHONS="cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310 pp37-pypy37_pp73"
-else
-    if [ `uname -m` == "aarch64" ]; then
-       export SUPPORTED_PYTHONS="cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310"
-    else
-       export SUPPORTED_PYTHONS="cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39"
-    fi
-fi
-
+# By default, this file builds pygame all available python/pypy versions. If
+# you only want to build on specific version(s), specify it here
+export SUPPORTED_PYTHONS="/opt/python/*"
 
 export PORTMIDI_INC_PORTTIME=1
 
@@ -28,42 +23,36 @@ fi
 # -03 is full optimization on.
 export CFLAGS="-g0 -O3"
 
-ls -la /io
+cd /io
+ls -la
 ls -la /opt/python/
 
-# Compile wheels
-for PYVER in $SUPPORTED_PYTHONS; do
-    rm -rf /io/Setup /io/build/
-    PYBIN="/opt/python/${PYVER}/bin"
-    PYTHON="/opt/python/${PYVER}/bin/python"
-	if [ ! -f ${PYBIN}/python ]; then
-	    PYTHON="/opt/python/${PYVER}/bin/pypy"
-	fi
+export PIP_CONFIG_FILE=buildconfig/pip_config.ini
 
-    ${PYTHON} -m pip install Sphinx
-    cd io
-    ${PYTHON} setup.py docs
-    cd ..
-    ${PYTHON} -m pip wheel --global-option="build_ext" --global-option="-j4" -vvv /io/ -w wheelhouse/
-done
-
-# Bundle external shared libraries into the wheels
-for whl in wheelhouse/*.whl; do
-    auditwheel repair $whl -w /io/buildconfig/manylinux-build/wheelhouse/
-done
-
-# Dummy options for headless testing
 export SDL_AUDIODRIVER=disk
 export SDL_VIDEODRIVER=dummy
 
-# Install packages and test
-for PYVER in $SUPPORTED_PYTHONS; do
-    PYBIN="/opt/python/${PYVER}/bin"
-    PYTHON="/opt/python/${PYVER}/bin/python"
-	if [ ! -f ${PYBIN}/python ]; then
-	    PYTHON="/opt/python/${PYVER}/bin/pypy"
+# Compile wheels
+for PYDIR in $SUPPORTED_PYTHONS; do
+    rm -rf Setup build
+    PYBIN="${PYDIR}/bin"
+    PYTHON="${PYBIN}/python"
+	if [ ! -f ${PYTHON} ]; then
+	    PYTHON="${PYBIN}/pypy"
 	fi
 
+    # build docs in the wheel
+    ${PYTHON} -m pip install Sphinx
+    ${PYTHON} setup.py docs
+
+    # make the wheel
+    ${PYTHON} -m pip wheel -vvv -w wheelhouse .
+
+    # Bundle external shared libraries into the wheels
+    auditwheel repair wheelhouse/* -w buildconfig/manylinux-build/wheelhouse/
+    rm -rf wheelhouse
+
+    # install pygame from wheel and run tests
     ${PYTHON} -m pip install pygame --no-index -f /io/buildconfig/manylinux-build/wheelhouse
     (cd $HOME; ${PYTHON} -m pygame.tests -vv --exclude opengl,music,timing)
 done
